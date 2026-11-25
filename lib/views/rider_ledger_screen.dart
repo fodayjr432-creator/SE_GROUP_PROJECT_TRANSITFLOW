@@ -5,6 +5,7 @@ import '../models/daily_log.dart';
 import '../models/rider.dart';
 import '../models/bike.dart';
 import '../controllers/union_controller.dart';
+import '../widgets/date_range_filter.dart';
 import 'payment_receipt_screen.dart';
 import 'payment_gateway_screen.dart';
 
@@ -22,7 +23,10 @@ class RiderLedgerScreen extends StatefulWidget {
 
 class _RiderLedgerScreenState extends State<RiderLedgerScreen> {
   String _selectedFeeFilter = 'ALL';
+  String _selectedPaymentStatusFilter = 'ALL';
   String _searchQuery = '';
+  DateTime? _dateRangeStart;
+  DateTime? _dateRangeEnd;
 
   @override
   Widget build(BuildContext context) {
@@ -51,14 +55,17 @@ class _RiderLedgerScreenState extends State<RiderLedgerScreen> {
         ? union.dailyLogs.where((l) => l.bikeId == targetBike.id).toList()
         : union.dailyLogs;
 
-    // Filter by fee and query
+    // Filter by fee, payment status, date range, and query
     final filteredLogs = allBikeLogs.where((l) {
       final matchesFee = _selectedFeeFilter == 'ALL' || l.feeTypeCode == _selectedFeeFilter;
+      final matchesPaymentStatus = _selectedPaymentStatusFilter == 'ALL' || l.paymentStatus.name.toUpperCase() == _selectedPaymentStatusFilter.toUpperCase();
+      final matchesStartDate = _dateRangeStart == null || l.paidAt.isAfter(_dateRangeStart!.subtract(const Duration(days: 1)));
+      final matchesEndDate = _dateRangeEnd == null || l.paidAt.isBefore(_dateRangeEnd!.add(const Duration(days: 1)));
       final matchesQuery = _searchQuery.isEmpty ||
           l.logCode.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           (l.feeTypeName?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false) ||
           (l.paymentMethod?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false);
-      return matchesFee && matchesQuery;
+      return matchesFee && matchesPaymentStatus && matchesStartDate && matchesEndDate && matchesQuery;
     }).toList();
 
     final totalPaid = allBikeLogs.fold(0.0, (sum, l) => sum + l.amount);
@@ -192,6 +199,44 @@ class _RiderLedgerScreenState extends State<RiderLedgerScreen> {
             ),
           ),
 
+          const SizedBox(height: 10),
+
+          // Payment Status Filter Chips
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Row(
+              children: [
+                _buildFilterChip('All Status', 'ALL'),
+                const SizedBox(width: 8),
+                _buildFilterChip('Paid', 'PAID'),
+                const SizedBox(width: 8),
+                _buildFilterChip('Pending', 'PENDING'),
+                const SizedBox(width: 8),
+                _buildFilterChip('Failed', 'FAILED'),
+                const SizedBox(width: 8),
+                _buildFilterChip('Refunded', 'REFUNDED'),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 10),
+
+          // Date Range Filter
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: DateRangeFilter(
+              initialStart: _dateRangeStart,
+              initialEnd: _dateRangeEnd,
+              onStartChanged: (date) => setState(() => _dateRangeStart = date),
+              onEndChanged: (date) => setState(() => _dateRangeEnd = date),
+              onClear: () => setState(() {
+                _dateRangeStart = null;
+                _dateRangeEnd = null;
+              }),
+            ),
+          ),
+
           const SizedBox(height: 12),
 
           // Ledger List
@@ -243,6 +288,8 @@ class _RiderLedgerScreenState extends State<RiderLedgerScreen> {
                                 AppTheme.formatDate(log.paidAt),
                                 style: const TextStyle(fontSize: 10, color: Colors.grey),
                               ),
+                              const SizedBox(height: 2),
+                              _buildStatusChip(log.paymentStatus),
                             ],
                           ),
                           trailing: Column(
@@ -290,7 +337,11 @@ class _RiderLedgerScreenState extends State<RiderLedgerScreen> {
   }
 
   Widget _buildFilterChip(String label, String code) {
-    final isSelected = _selectedFeeFilter == code;
+    final isFeeFilter = ['ALL', 'DAILY_LEVY', 'SAFETY_FINE', 'ANNUAL_PERMIT', 'CUSTOM_PAYMENT'].contains(code);
+    final isStatusFilter = ['ALL', 'PAID', 'PENDING', 'FAILED', 'REFUNDED'].contains(code);
+    final isSelected = isFeeFilter
+        ? _selectedFeeFilter == code
+        : _selectedPaymentStatusFilter == code;
     return ChoiceChip(
       label: Text(
         label,
@@ -303,8 +354,52 @@ class _RiderLedgerScreenState extends State<RiderLedgerScreen> {
       selected: isSelected,
       selectedColor: AppTheme.primaryGreen,
       onSelected: (_) {
-        setState(() => _selectedFeeFilter = code);
+        setState(() {
+          if (isFeeFilter) {
+            _selectedFeeFilter = code;
+          } else if (isStatusFilter) {
+            _selectedPaymentStatusFilter = code;
+          }
+        });
       },
+    );
+  }
+
+  Widget _buildStatusChip(PaymentStatus status) {
+    Color color;
+    String label;
+    switch (status) {
+      case PaymentStatus.paid:
+        color = AppTheme.primaryGreen;
+        label = 'PAID';
+        break;
+      case PaymentStatus.pending:
+        color = AppTheme.goldenAmber;
+        label = 'PENDING';
+        break;
+      case PaymentStatus.failed:
+        color = AppTheme.statusFlagged;
+        label = 'FAILED';
+        break;
+      case PaymentStatus.refunded:
+        color = AppTheme.accentBlue;
+        label = 'REFUNDED';
+        break;
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 9,
+          fontWeight: FontWeight.bold,
+          color: color,
+        ),
+      ),
     );
   }
 }

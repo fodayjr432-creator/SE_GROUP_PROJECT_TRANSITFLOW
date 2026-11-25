@@ -7,6 +7,7 @@ import '../controllers/union_controller.dart';
 import '../models/bike.dart';
 import '../models/safety_inspection.dart';
 import '../widgets/status_pill.dart';
+import '../widgets/date_range_filter.dart';
 import 'bike_detail_screen.dart';
 
 /// Screen 11: Safety Inspection & Vehicle Verification Screen
@@ -31,6 +32,8 @@ class _SafetyInspectionScreenState extends State<SafetyInspectionScreen> with Si
   String _decisionStatus = 'PASSED';
   final TextEditingController _remarksController = TextEditingController();
   String _historyFilter = 'ALL';
+  DateTime? _inspectionDateRangeStart;
+  DateTime? _inspectionDateRangeEnd;
 
   @override
   void initState() {
@@ -74,8 +77,10 @@ class _SafetyInspectionScreenState extends State<SafetyInspectionScreen> with Si
 
     final allInspections = union.inspections;
     final filteredInspections = allInspections.where((i) {
-      if (_historyFilter == 'ALL') return true;
-      return i.status.toUpperCase() == _historyFilter;
+      final matchesStatus = _historyFilter == 'ALL' || i.status.toUpperCase() == _historyFilter;
+      final matchesStartDate = _inspectionDateRangeStart == null || i.inspectedAt.isAfter(_inspectionDateRangeStart!.subtract(const Duration(days: 1)));
+      final matchesEndDate = _inspectionDateRangeEnd == null || i.inspectedAt.isBefore(_inspectionDateRangeEnd!.add(const Duration(days: 1)));
+      return matchesStatus && matchesStartDate && matchesEndDate;
     }).toList();
 
     return Scaffold(
@@ -382,6 +387,20 @@ class _SafetyInspectionScreenState extends State<SafetyInspectionScreen> with Si
                       _historyFilterChip('PENDING', 'Pending (${allInspections.where((i) => i.isPending).length})'),
                     ],
                   ),
+                ),
+              ),
+              // Date Range Filter
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+                child: DateRangeFilter(
+                  initialStart: _inspectionDateRangeStart,
+                  initialEnd: _inspectionDateRangeEnd,
+                  onStartChanged: (date) => setState(() => _inspectionDateRangeStart = date),
+                  onEndChanged: (date) => setState(() => _inspectionDateRangeEnd = date),
+                  onClear: () => setState(() {
+                    _inspectionDateRangeStart = null;
+                    _inspectionDateRangeEnd = null;
+                  }),
                 ),
               ),
               Expanded(

@@ -6,6 +6,7 @@ import '../controllers/auth_controller.dart';
 import '../controllers/union_controller.dart';
 import '../models/compliance_dispute.dart';
 import '../widgets/status_pill.dart';
+import '../widgets/date_range_filter.dart';
 
 /// Screen 10: Compliance & Levy Disputes Screen
 /// Allows commercial riders to appeal wrongful fines, duplicate daily levies,
@@ -27,6 +28,8 @@ class DisputesScreen extends StatefulWidget {
 class _DisputesScreenState extends State<DisputesScreen> {
   String _selectedStatusFilter = 'ALL';
   String _searchQuery = '';
+  DateTime? _dateRangeStart;
+  DateTime? _dateRangeEnd;
 
   @override
   Widget build(BuildContext context) {
@@ -43,7 +46,9 @@ class _DisputesScreenState extends State<DisputesScreen> {
           d.subject.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           (d.plateNumber?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false) ||
           (d.riderName?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false);
-      return matchesStatus && matchesQuery;
+      final matchesStartDate = _dateRangeStart == null || d.createdAt.isAfter(_dateRangeStart!.subtract(const Duration(days: 1)));
+      final matchesEndDate = _dateRangeEnd == null || d.createdAt.isBefore(_dateRangeEnd!.add(const Duration(days: 1)));
+      return matchesStatus && matchesQuery && matchesStartDate && matchesEndDate;
     }).toList();
 
     return Scaffold(
@@ -97,6 +102,21 @@ class _DisputesScreenState extends State<DisputesScreen> {
                       const SizedBox(width: 8),
                       _filterChip('REJECTED', 'Rejected'),
                     ],
+                  ),
+                ),
+                const SizedBox(height: 10),
+                // Date Range Filter
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: DateRangeFilter(
+                    initialStart: _dateRangeStart,
+                    initialEnd: _dateRangeEnd,
+                    onStartChanged: (date) => setState(() => _dateRangeStart = date),
+                    onEndChanged: (date) => setState(() => _dateRangeEnd = date),
+                    onClear: () => setState(() {
+                      _dateRangeStart = null;
+                      _dateRangeEnd = null;
+                    }),
                   ),
                 ),
               ],

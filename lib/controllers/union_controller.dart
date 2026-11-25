@@ -30,12 +30,18 @@ class UnionController extends ChangeNotifier {
   String _riderSearchQuery = '';
   String _selectedZoneFilter = 'ALL';
   String _selectedInspectionFilter = 'ALL';
+  DateTime? _logDateRangeStart;
+  DateTime? _logDateRangeEnd;
+  String _selectedPaymentStatusFilter = 'ALL';
 
   bool get isLoading => _isLoading;
   String? get statusMessage => _statusMessage;
   String get riderSearchQuery => _riderSearchQuery;
   String get selectedZoneFilter => _selectedZoneFilter;
   String get selectedInspectionFilter => _selectedInspectionFilter;
+  DateTime? get logDateRangeStart => _logDateRangeStart;
+  DateTime? get logDateRangeEnd => _logDateRangeEnd;
+  String get selectedPaymentStatusFilter => _selectedPaymentStatusFilter;
 
   // Data Getters
   List<Rider> get riders => _riderService.getAllRiders();
@@ -71,7 +77,18 @@ class UnionController extends ChangeNotifier {
   }
 
   // Search & Filter for Daily Logs
-  List<DailyLog> filterLogs({String? zoneId, String? feeTypeCode, String? query}) {
+  List<DailyLog> filterLogs({
+    String? zoneId,
+    String? feeTypeCode,
+    String? query,
+    DateTime? startDate,
+    DateTime? endDate,
+    String? paymentStatus,
+  }) {
+    final effectiveStart = startDate ?? _logDateRangeStart;
+    final effectiveEnd = endDate ?? _logDateRangeEnd;
+    final effectivePaymentStatus = paymentStatus ?? _selectedPaymentStatusFilter;
+
     return dailyLogs.where((l) {
       final matchesZone = zoneId == null || zoneId == 'ALL' || l.zoneId == zoneId || l.zoneName == zoneId;
       final matchesFee = feeTypeCode == null || feeTypeCode == 'ALL' || l.feeTypeCode == feeTypeCode;
@@ -80,7 +97,11 @@ class UnionController extends ChangeNotifier {
           (l.plateNumber?.toLowerCase().contains(query.toLowerCase()) ?? false) ||
           (l.riderName?.toLowerCase().contains(query.toLowerCase()) ?? false) ||
           l.logCode.toLowerCase().contains(query.toLowerCase());
-      return matchesZone && matchesFee && matchesQuery;
+      final matchesStartDate = effectiveStart == null || l.paidAt.isAfter(effectiveStart.subtract(const Duration(days: 1)));
+      final matchesEndDate = effectiveEnd == null || l.paidAt.isBefore(effectiveEnd.add(const Duration(days: 1)));
+      final matchesPaymentStatus = effectivePaymentStatus == 'ALL' || l.paymentStatus.name.toUpperCase() == effectivePaymentStatus.toUpperCase();
+
+      return matchesZone && matchesFee && matchesQuery && matchesStartDate && matchesEndDate && matchesPaymentStatus;
     }).toList();
   }
 
@@ -132,6 +153,23 @@ class UnionController extends ChangeNotifier {
 
   void setInspectionFilter(String filter) {
     _selectedInspectionFilter = filter;
+    notifyListeners();
+  }
+
+  void setLogDateRange({DateTime? start, DateTime? end}) {
+    _logDateRangeStart = start;
+    _logDateRangeEnd = end;
+    notifyListeners();
+  }
+
+  void clearLogDateRange() {
+    _logDateRangeStart = null;
+    _logDateRangeEnd = null;
+    notifyListeners();
+  }
+
+  void setPaymentStatusFilter(String filter) {
+    _selectedPaymentStatusFilter = filter;
     notifyListeners();
   }
 

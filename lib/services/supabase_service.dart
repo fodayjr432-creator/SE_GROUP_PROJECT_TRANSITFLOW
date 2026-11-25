@@ -17,9 +17,9 @@ class SupabaseService {
   SupabaseClient? get client => _client;
 
   /// Initialize Supabase with current configuration
-  Future<bool> initialize({String? url, String? anonKey}) async {
+  Future<bool> initialize({String? url, String? publishableKey}) async {
     final targetUrl = url ?? AppConfig.activeSupabaseUrl;
-    final targetKey = anonKey ?? AppConfig.activeSupabaseAnonKey;
+    final targetKey = publishableKey ?? AppConfig.activeSupabasePublishableKey;
 
     try {
       if (targetUrl.isEmpty || targetUrl.contains('xyzcompany')) {
@@ -31,7 +31,7 @@ class SupabaseService {
 
       await Supabase.initialize(
         url: targetUrl,
-        anonKey: targetKey,
+        publishableKey: targetKey,
         debug: kDebugMode,
       );
 
@@ -40,7 +40,7 @@ class SupabaseService {
       _connectionStatus = 'Connected to Live Supabase';
       AppConfig.isLiveSupabaseConnected = true;
       AppConfig.activeSupabaseUrl = targetUrl;
-      AppConfig.activeSupabaseAnonKey = targetKey;
+      AppConfig.activeSupabasePublishableKey = targetKey;
       return true;
     } catch (e) {
       debugPrint('Supabase init notice: $e');

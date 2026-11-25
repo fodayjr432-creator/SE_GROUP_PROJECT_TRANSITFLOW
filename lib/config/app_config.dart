@@ -17,14 +17,14 @@ class AppConfig {
     'SUPABASE_URL',
     defaultValue: 'https://xyzcompany.supabase.co',
   );
-  static const String defaultSupabaseAnonKey = String.fromEnvironment(
-    'SUPABASE_ANON_KEY',
-    defaultValue: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.dummy_anon_key_for_offline_resilience',
+  static const String defaultSupabasePublishableKey = String.fromEnvironment(
+    'SUPABASE_PUBLISHABLE_KEY',
+    defaultValue: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.dummy_publishable_key_for_offline_resilience',
   );
 
   // Runtime Supabase values (allow in-app live configuration from Settings screen)
   static String activeSupabaseUrl = defaultSupabaseUrl;
-  static String activeSupabaseAnonKey = defaultSupabaseAnonKey;
+  static String activeSupabasePublishableKey = defaultSupabasePublishableKey;
   static bool isLiveSupabaseConnected = false;
 
   // Currency

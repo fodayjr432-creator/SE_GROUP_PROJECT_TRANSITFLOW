@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../config/app_theme.dart';
 import '../models/rider.dart';
-import '../models/bike.dart';
 import '../controllers/union_controller.dart';
 import '../widgets/status_pill.dart';
 import 'bike_detail_screen.dart';
@@ -145,7 +144,7 @@ class RiderProfileScreen extends StatelessWidget {
                       _buildHeaderStat('Union Status', targetRider.status, Colors.white),
                       _buildHeaderStat(
                         'Dues Paid',
-                        AppTheme.formatLeones(targetRider.totalDuesPaid),
+                        AppTheme.formatLeones(targetRider.totalDuesPaid ?? 0.0),
                         AppTheme.goldenAmber,
                       ),
                       _buildHeaderStat(

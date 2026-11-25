@@ -1,3 +1,10 @@
+enum PaymentStatus {
+  paid,
+  pending,
+  failed,
+  refunded,
+}
+
 class DailyLog {
   final String id;
   final String logCode; // e.g. LOG-20261124-001
@@ -7,6 +14,7 @@ class DailyLog {
   final String feeTypeId;
   final double amount;
   final String paymentMethod; // 'CASH_OFFICIAL', 'ORANGE_MONEY', 'AFRICEL_MONEY', 'CARD', 'ONLINE'
+  final PaymentStatus paymentStatus;
   final String? recordedByProfileId;
   final String? notes;
   final DateTime paidAt;
@@ -28,6 +36,7 @@ class DailyLog {
     required this.feeTypeId,
     required this.amount,
     this.paymentMethod = 'CASH_OFFICIAL',
+    this.paymentStatus = PaymentStatus.paid,
     this.recordedByProfileId,
     this.notes,
     DateTime? paidAt,
@@ -49,6 +58,7 @@ class DailyLog {
       feeTypeId: json['fee_type_id'] as String,
       amount: (json['amount'] as num).toDouble(),
       paymentMethod: json['payment_method'] as String? ?? 'CASH_OFFICIAL',
+      paymentStatus: _parsePaymentStatus(json['payment_status'] as String?),
       recordedByProfileId: json['recorded_by_profile_id'] as String?,
       notes: json['notes'] as String?,
       paidAt: json['paid_at'] != null
@@ -63,6 +73,20 @@ class DailyLog {
     );
   }
 
+  static PaymentStatus _parsePaymentStatus(String? status) {
+    switch (status?.toLowerCase()) {
+      case 'pending':
+        return PaymentStatus.pending;
+      case 'failed':
+        return PaymentStatus.failed;
+      case 'refunded':
+        return PaymentStatus.refunded;
+      case 'paid':
+      default:
+        return PaymentStatus.paid;
+    }
+  }
+
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -73,6 +97,7 @@ class DailyLog {
       'fee_type_id': feeTypeId,
       'amount': amount,
       'payment_method': paymentMethod,
+      'payment_status': paymentStatus.name,
       'recorded_by_profile_id': recordedByProfileId,
       'notes': notes,
       'paid_at': paidAt.toIso8601String(),

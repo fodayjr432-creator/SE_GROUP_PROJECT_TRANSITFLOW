@@ -8,6 +8,7 @@ import '../models/daily_log.dart';
 import '../models/audit_trail_log.dart';
 import '../widgets/stat_card.dart';
 import '../widgets/status_pill.dart';
+import '../widgets/date_range_filter.dart';
 import 'payment_receipt_screen.dart';
 
 /// Screen 13: Executive Analytics & Financial Audit Ledger Screen
@@ -25,6 +26,9 @@ class _ExecutiveAnalyticsScreenState extends State<ExecutiveAnalyticsScreen> wit
   late TabController _tabController;
   String _selectedStationFilter = 'ALL';
   String _logSearchQuery = '';
+  String _selectedPaymentStatusFilter = 'ALL';
+  DateTime? _logDateRangeStart;
+  DateTime? _logDateRangeEnd;
 
   @override
   void initState() {
@@ -58,12 +62,15 @@ class _ExecutiveAnalyticsScreenState extends State<ExecutiveAnalyticsScreen> wit
 
     final dailyLogs = union.dailyLogs;
     final filteredLogs = dailyLogs.where((l) {
-      final matchesStation = _selectedStationFilter == 'ALL' || l.zoneId == _selectedStationFilter;
+      final matchesStation = _selectedStationFilter == 'ALL' || l.zoneId == _selectedStationFilter || l.zoneName == _selectedStationFilter;
       final matchesQuery = _logSearchQuery.isEmpty ||
           l.logCode.toLowerCase().contains(_logSearchQuery.toLowerCase()) ||
           (l.plateNumber?.toLowerCase().contains(_logSearchQuery.toLowerCase()) ?? false) ||
           (l.riderName?.toLowerCase().contains(_logSearchQuery.toLowerCase()) ?? false);
-      return matchesStation && matchesQuery;
+      final matchesPaymentStatus = _selectedPaymentStatusFilter == 'ALL' || l.paymentStatus.name.toUpperCase() == _selectedPaymentStatusFilter.toUpperCase();
+      final matchesStartDate = _logDateRangeStart == null || l.paidAt.isAfter(_logDateRangeStart!.subtract(const Duration(days: 1)));
+      final matchesEndDate = _logDateRangeEnd == null || l.paidAt.isBefore(_logDateRangeEnd!.add(const Duration(days: 1)));
+      return matchesStation && matchesQuery && matchesPaymentStatus && matchesStartDate && matchesEndDate;
     }).toList();
 
     final auditLogs = union.auditLogs;
@@ -374,6 +381,40 @@ class _ExecutiveAnalyticsScreenState extends State<ExecutiveAnalyticsScreen> wit
                         ],
                       ),
                     ),
+                    const SizedBox(height: 10),
+                    // Payment Status Filter Chips
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      child: Row(
+                        children: [
+                          _buildPaymentStatusChip('ALL', 'All Status'),
+                          const SizedBox(width: 8),
+                          _buildPaymentStatusChip('PAID', 'Paid'),
+                          const SizedBox(width: 8),
+                          _buildPaymentStatusChip('PENDING', 'Pending'),
+                          const SizedBox(width: 8),
+                          _buildPaymentStatusChip('FAILED', 'Failed'),
+                          const SizedBox(width: 8),
+                          _buildPaymentStatusChip('REFUNDED', 'Refunded'),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    // Date Range Filter
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      child: DateRangeFilter(
+                        initialStart: _logDateRangeStart,
+                        initialEnd: _logDateRangeEnd,
+                        onStartChanged: (date) => setState(() => _logDateRangeStart = date),
+                        onEndChanged: (date) => setState(() => _logDateRangeEnd = date),
+                        onClear: () => setState(() {
+                          _logDateRangeStart = null;
+                          _logDateRangeEnd = null;
+                        }),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -458,6 +499,61 @@ class _ExecutiveAnalyticsScreenState extends State<ExecutiveAnalyticsScreen> wit
     );
   }
 
+  Widget _buildPaymentStatusChip(String code, String label) {
+    final isSelected = _selectedPaymentStatusFilter == code;
+    return ChoiceChip(
+      label: Text(label, style: const TextStyle(fontSize: 11)),
+      selected: isSelected,
+      onSelected: (selected) {
+        if (selected) setState(() => _selectedPaymentStatusFilter = code);
+      },
+      selectedColor: AppTheme.primaryGreen,
+      labelStyle: TextStyle(
+        color: isSelected ? Colors.white : null,
+        fontSize: 11,
+        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+      ),
+    );
+  }
+
+  Widget _buildLogStatusChip(PaymentStatus status) {
+    Color color;
+    String label;
+    switch (status) {
+      case PaymentStatus.paid:
+        color = AppTheme.primaryGreen;
+        label = 'PAID';
+        break;
+      case PaymentStatus.pending:
+        color = AppTheme.goldenAmber;
+        label = 'PENDING';
+        break;
+      case PaymentStatus.failed:
+        color = AppTheme.statusFlagged;
+        label = 'FAILED';
+        break;
+      case PaymentStatus.refunded:
+        color = AppTheme.accentBlue;
+        label = 'REFUNDED';
+        break;
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 9,
+          fontWeight: FontWeight.bold,
+          color: color,
+        ),
+      ),
+    );
+  }
+
   Widget _dailyLogCard(
     BuildContext context,
     DailyLog log,
@@ -515,10 +611,7 @@ class _ExecutiveAnalyticsScreenState extends State<ExecutiveAnalyticsScreen> wit
                   '${log.feeTypeName ?? "Levy"} • ${log.riderName ?? "Rider"}',
                   style: TextStyle(fontSize: 12, color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF475569)),
                 ),
-                Text(
-                  log.zoneName ?? 'Freetown Zone',
-                  style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
-                ),
+                _buildLogStatusChip(log.paymentStatus),
               ],
             ),
             const SizedBox(height: 6),
